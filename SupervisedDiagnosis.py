@@ -1,0 +1,136 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from sklearn.datasets import load_breast_cancer
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, classification_report
+import numpy as np
+
+
+def load_and_prepare_data():
+    # Load the dataset
+    cancer = load_breast_cancer()
+    X = cancer.data
+    y = cancer.target
+
+    # Split the data into training, validation, and testing sets (60/20/20 split)
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) # 0.25 of 0.8 is 0.2
+
+    # Scale the features using StandardScaler
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_val = scaler.transform(X_val)
+    X_test = scaler.transform(X_test)
+
+    # Convert data to PyTorch tensors
+    X_train = torch.tensor(X_train, dtype=torch.float32)
+    X_val = torch.tensor(X_val, dtype=torch.float32)
+    X_test = torch.tensor(X_test, dtype=torch.float32)
+    y_train = torch.tensor(y_train, dtype=torch.long)
+    y_val = torch.tensor(y_val, dtype=torch.long)
+    y_test = torch.tensor(y_test, dtype=torch.long)
+
+    return X_train, X_val, X_test, y_train, y_val, y_test, scaler #returning scaler to use it later in predict function
+
+
+# 2. Define the Model
+class BinaryClassifier(nn.Module):
+
+    def __init__(self, input_size):
+
+        super(BinaryClassifier, self).__init__()
+        self.fc1 = nn.Linear(input_size, 64)  # layer 1
+        self.relu1 = nn.ReLU()
+        self.fc2 = nn.Linear(64, 32)       # layer 2
+        self.relu2 = nn.ReLU()
+        self.fc3 = nn.Linear(32, 1)       #  layer 3 (output layer)
+        self.sigmoid = nn.Sigmoid()
+
+    def forward(self, x):
+        # forward propigate through network
+        out = self.fc1(x)
+        out = self.relu1(out)
+        out = self.fc2(out)
+        out = self.relu2(out)
+        out = self.fc3(out)
+        out = self.sigmoid(out)
+        return out
+
+
+
+def train_model(model, X_train, y_train, X_val, y_val, epochs=100, learning_rate=0.001):
+
+    criterion = nn.BCELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    # Train the model
+    val_accuracies = []
+    for epoch in range(epochs):
+        # Forward propagation
+        y_pred = model(X_train)
+        loss = criterion(y_pred, y_train.float().view(-1, 1))
+
+        # Backward propagation and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+
+        # Evaluate on validation set
+        with torch.no_grad():
+            y_pred_val = model(X_val)
+            y_pred_val_binary = (y_pred_val > 0.5).long()  # Threshold at 0.5
+            val_accuracy = accuracy_score(y_val.numpy(), y_pred_val_binary.numpy())
+            val_accuracies.append(val_accuracy)
+
+        # Print training progress
+        print(f'Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Validation Accuracy: {val_accuracy:.4f}')
+    return val_accuracies
+
+def predict(model, scaler, data):
+    # Convert the input data to a numpy array if it's a list
+    if isinstance(data, list):
+        data = np.array(data).reshape(1, -1)  # Reshape to (1, num_features)
+    elif isinstance(data, np.ndarray):
+        if data.ndim == 1:
+          data = data.reshape(1, -1)
+    else:
+        raise TypeError("Input data must be a list or a numpy array.")
+
+    # Scale the data using the scaler fitted on the training data
+    data_scaled = scaler.transform(data)
+    # Convert the scaled data to a PyTorch tensor
+    data_tensor = torch.tensor(data_scaled, dtype=torch.float32)
+
+    # Make the prediction
+    model.eval()  # Set the model to evaluation mode
+    with torch.no_grad():  # Disable gradient calculation for inference
+        y_pred_prob = model(data_tensor)
+        y_pred_binary = (y_pred_prob > 0.5).long()  # Threshold at 0.5
+
+    return y_pred_binary.item()  # Return the prediction as a Python integer
+
+def evaluate_model(model, X_test, y_test):
+    # Evaluate the model on the test set
+    with torch.no_grad():
+        y_pred_test = model(X_test)
+        y_pred_test_binary = (y_pred_test > 0.5).long()  # Threshold at 0.5
+        test_accuracy = accuracy_score(y_test.numpy(), y_pred_test_binary.numpy())
+
+    print(f'Test Accuracy: {test_accuracy:.4f}')
+    print(classification_report(y_test.numpy(), y_pred_test_binary.numpy()))
+
+if __name__ == "__main__":
+    # Load and prepare the data
+    X_train, X_val, X_test, y_train, y_val, y_test, scaler = load_and_prepare_data()
+
+    # Define the model
+    input_size = X_train.shape[1]  # Number of features
+    model = BinaryClassifier(input_size)
+
+    # Train the model
+    val_accuracies = train_model(model, X_train, y_train, X_val, y_val, epochs=100, learning_rate=0.001)
+
+    # Evaluate the model
+    evaluate_model(model, X_test, y_test)
