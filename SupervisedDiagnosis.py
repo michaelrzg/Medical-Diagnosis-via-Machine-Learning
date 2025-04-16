@@ -18,7 +18,7 @@ def load_and_prepare_data():
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) # 0.25 of 0.8 is 0.2
 
-    # Scale the features using StandardScaler
+    # normalize the data
     scaler = StandardScaler()
     X_train = scaler.fit_transform(X_train)
     X_val = scaler.transform(X_val)
@@ -32,7 +32,7 @@ def load_and_prepare_data():
     y_val = torch.tensor(y_val, dtype=torch.long)
     y_test = torch.tensor(y_test, dtype=torch.long)
 
-    return X_train, X_val, X_test, y_train, y_val, y_test, scaler #returning scaler to use it later in predict function
+    return X_train, X_val, X_test, y_train, y_val, y_test, scaler
 
 
 # 2. Define the Model
