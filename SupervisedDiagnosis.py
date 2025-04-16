@@ -14,7 +14,8 @@ def load_and_prepare_data():
     X = cancer.data
     y = cancer.target
 
-    # Split the data into training, validation, and testing sets (60/20/20 split)
+    # Split the data into train, test, adn validation sets
+    # lines 19 and 20 borrowed from sklearn website
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.25, random_state=42) # 0.25 of 0.8 is 0.2
 
@@ -24,7 +25,7 @@ def load_and_prepare_data():
     X_val = scaler.transform(X_val)
     X_test = scaler.transform(X_test)
 
-    # Convert data to PyTorch tensors
+    # Convert data to tensors
     X_train = torch.tensor(X_train, dtype=torch.float32)
     X_val = torch.tensor(X_val, dtype=torch.float32)
     X_test = torch.tensor(X_test, dtype=torch.float32)
@@ -46,7 +47,7 @@ class BinaryClassifier(nn.Module):
         self.fc2 = nn.Linear(64, 32)       # layer 2
         self.relu2 = nn.ReLU()
         self.fc3 = nn.Linear(32, 1)       #  layer 3 (output layer)
-        self.sigmoid = nn.Sigmoid()
+        self.sigmoid = nn.Sigmoid()       # map to value between 0 and 1
 
     def forward(self, x):
         # forward propigate through network
@@ -100,7 +101,7 @@ def predict(model, scaler, data):
 
     # Scale the data using the scaler fitted on the training data
     data_scaled = scaler.transform(data)
-    # Convert the scaled data to a PyTorch tensor
+    # Convert the scaled data to a tensor
     data_tensor = torch.tensor(data_scaled, dtype=torch.float32)
 
     # Make the prediction
