@@ -72,7 +72,6 @@ def train_model(model, X_train, y_train, X_val, y_val, epochs=100, learning_rate
         # Forward propagation
         y_pred = model(X_train)
         loss = criterion(y_pred, y_train.float().view(-1, 1))
-
         # Backward propagation and optimization
         optimizer.zero_grad()
         loss.backward()
@@ -118,8 +117,23 @@ def evaluate_model(model, X_test, y_test):
         y_pred_test = model(X_test)
         y_pred_test_binary = (y_pred_test > 0.5).long()  # Threshold at 0.5
         test_accuracy = accuracy_score(y_test.numpy(), y_pred_test_binary.numpy())
-
-    print(f'Test Accuracy: {test_accuracy:.4f}')
+    # variables for confusion matrix
+    tp =0
+    fp= 0
+    fn=0
+    tn=0
+    for i in range(len(y_pred_test_binary)):
+        if y_pred_test_binary[i] == 1:
+            if y_test[i] == 1:
+                tp+=1
+            else:
+                fp+=1
+        else:
+            if y_test[i] == 1:
+                fn+=1
+            else:
+                tn+=1
+    print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
     print(classification_report(y_test.numpy(), y_pred_test_binary.numpy()))
 
 if __name__ == "__main__":
