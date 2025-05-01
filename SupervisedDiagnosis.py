@@ -115,8 +115,7 @@ def train_model(model, X_train, y_train, X_val, y_val, epochs=100, learning_rate
             val_accuracy = accuracy_score(y_val.numpy(), y_pred_val_binary.numpy())
             val_accuracies.append(val_accuracy)
 
-        # Print training progress
-        print(f'Epoch {epoch+1}/{epochs}, Loss: {loss.item():.4f}, Validation Accuracy: {val_accuracy:.4f}')
+
     return val_accuracies
 
 def predict(model, scaler, data):
