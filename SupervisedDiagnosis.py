@@ -1,3 +1,8 @@
+# Michael Rizig
+# Supervised Learning alg to predict breast cancer dataset
+# 4/10/25
+# Professor Alexiou
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -34,6 +39,8 @@ class BinaryClassifier(nn.Module):
 class Supervised:
     def __init__(self):
         self.classifier = BinaryClassifier(30)
+        self.load_data()
+        self.train_model()
     def load_data(self):
         # Load the dataset
         cancer = load_breast_cancer()
@@ -44,25 +51,25 @@ class Supervised:
         self.features = list(X.columns)
         # Split the data into train, test, adn validation sets
         # lines 19 and 20 borrowed from sklearn website
-        xtrain, X_test, ytrain, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        xtrain, xtest, ytrain, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
         xtrain, xvalidation, ytrain, yvalidation = train_test_split(xtrain, ytrain, test_size=0.25, random_state=42) # 0.25 of 0.8 is 0.2
 
         # normalize the data
         # https://scikit-learn.org/stable/modules/generated/sklearn.preprocessing.StandardScaler
-        scaler = StandardScaler()
-        xtrain = scaler.fit_transform(xtrain)
-        xvalidation = scaler.transform(xvalidation)
-        X_test = scaler.transform(X_test)
+        self.scaler = StandardScaler()
+        xtrain = self.scaler.fit_transform(xtrain)
+        xvalidation = self.scaler.transform(xvalidation)
+        xtest = self.scaler.transform(xtest)
 
         # Convert data to tensors
         self.xtrain = torch.tensor(xtrain, dtype=torch.float32)
         self.xvalidation = torch.tensor(xvalidation, dtype=torch.float32)
-        self.X_test = torch.tensor(X_test, dtype=torch.float32)
+        self.xtest = torch.tensor(xtest, dtype=torch.float32)
         self.ytrain = torch.tensor(ytrain, dtype=torch.long)
         self.yvalidation = torch.tensor(yvalidation, dtype=torch.long)
         self.y_test = torch.tensor(y_test, dtype=torch.long)
 
-        return self.xtrain, self.xvalidation, self.X_test, self.ytrain, self.yvalidation, y_test, scaler, self.features
+        return self.xtrain, self.xvalidation, self.xtest, self.ytrain, self.yvalidation, y_test, self.scaler, self.features
 
     # divde and conquer reduce:
 
@@ -119,33 +126,15 @@ class Supervised:
 
         return val_accuracies
 
-    def predict(self,model, scaler, data):
-        # Convert the input data to a numpy array if it's a list
-        if isinstance(data, list):
-            data = np.array(data).reshape(1, -1)  # Reshape to (1, num_features)
-        elif isinstance(data, np.ndarray):
-            if data.ndim == 1:
-                data = data.reshape(1, -1)
-        else:
-            raise TypeError("Input data must be a list or a numpy array.")
-
-        # Scale the data using the scaler fitted on the training data
-        data_scaled = scaler.transform(data)
-        # Convrt the scaled data to a tensor
-        data_tensor = torch.tensor(data_scaled, dtype=torch.float32)
-
-        # Make the prediction
-        model.eval()  # Set the model to evaluation mode
-        with torch.no_grad():  # Disable gradient calculation for inference
-            y_pred_prob = model(data_tensor)
-            y_pred_binary = (y_pred_prob > 0.5).long()  # Threshold at 0.5
-
-        return y_pred_binary.item()
+    def predict(self, data):
+        pred = self.classifier(data)
+        pred = (pred>0.5).int().tolist()
+        return sum(pred,[])
 
     def evaluate_model(self):
         # Evaluate the model on the test set
         with torch.no_grad():
-            y_pred_test = self.classifier(self.X_test)
+            y_pred_test = self.classifier(self.xtest)
             y_pred_test_binary = (y_pred_test > 0.5).long()  # Threshold at 0.5
             #test_accuracy = accuracy_score(self.y_test, y_pred_test_binary.numpy())
         # variables for confusion matrix
@@ -164,14 +153,12 @@ class Supervised:
                     fn+=1
                 else:
                     tn+=1
-        print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
-        print(classification_report(self.y_test, y_pred_test_binary.numpy()))
+        #print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
+        return classification_report(self.y_test, y_pred_test_binary.numpy())
 
+if __name__ == "__main__":
 
-supervised = Supervised()
-# Load and prepare the data
-supervised.load_data()
-# Train the model
-supervised.train_model()
-# Evaluate the model
-supervised.evaluate_model()
+    supervised = Supervised()
+    supervised.predict(supervised.xtest)
+    # Evaluate the model
+    print(supervised.evaluate_model())

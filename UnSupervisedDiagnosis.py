@@ -1,9 +1,20 @@
+# Michael Rizig
+# Unsupervised Learning alg (kmeans) to predict breast cancer dataset
+# 4/10/25
+# Professor Alexiou
+
 import numpy as np
 from sklearn.datasets import load_breast_cancer
 from sklearn.cluster import KMeans
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import accuracy_score, classification_report
+
 class Unsupervised:
+    def __init__(self):
+        self.load_data()
+        self.train_kmeans_model()
+        self.assigned_clusters =  self.assign_clusters_to_labels()
     # load the data the same way as the supervised data but without labels
     def load_data(self):
         # Load the dataset
@@ -12,27 +23,26 @@ class Unsupervised:
         y = cancer.target #useful for comparing the clusters to the actual labels
 
         # note that this alg only loads the X values, not the Y values (no labels)
-        xtrain, xtest, ytrain, ytest = train_test_split(X, y, test_size=0.2, random_state=42)
+        self.xtrain, self.xtest, self.ytrain, self.ytest = train_test_split(X, y, test_size=0.2, random_state=42)
 
         scaler = StandardScaler()
-        xtrain = scaler.fit_transform(xtrain)
-        xtest = scaler.transform(xtest)
+        self.xtrain = scaler.fit_transform(self.xtrain)
+        self.xtest = scaler.transform(self.xtest)
 
-        return xtrain, xtest, ytrain, ytest, scaler
+        return self.xtrain, self.xtest, self.ytrain, self.ytest, scaler
 
     # train a k-means model (creates clusters and matches each datapoint to the cluster it is closest to)
-    def train_kmeans_model(self,xtrain, n_clusters=2):
+    def train_kmeans_model(self, n_clusters=2):
 
-        kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
+        self.kmeans = KMeans(n_clusters=n_clusters, random_state=42, n_init='auto')
         # Train the model
-        kmeans.fit(xtrain)
-        return kmeans
+        self.kmeans.fit(self.xtrain)
+        return self.kmeans
 
-    def evaluate_kmeans_model(self,kmeans, xtest, ytest):
+    def evaluate(self):
         # Predict the clusters for the test data
-        cluster_labels = kmeans.predict(xtest)
-        assigned_clusers = self.assign_clusters_to_labels(kmeans, xtest, ytest)
-        if assigned_clusers[0] == 1: # if the labels are flipped, flip the labels of each
+        cluster_labels =self.kmeans.predict(self.xtest)
+        if self.assigned_clusters[0] == 1: # if the labels are flipped, flip the labels of each
             for i in range(len(cluster_labels)):
                 if cluster_labels[i] == 1:
                     cluster_labels[i] = 0
@@ -45,26 +55,27 @@ class Unsupervised:
         tn=0
         for i in range(len(cluster_labels)):
             if cluster_labels[i] == 1:
-                if ytest[i] == 1:
+                if self.ytest[i] == 1:
                     tp+=1
                 else:
                     fp+=1
             else:
-                if ytest[i] == 1:
+                if self.ytest[i] == 1:
                     fn+=1
                 else:
                     tn+=1
-        print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
-        print(cluster_labels, ytest, assigned_clusers)
+        #print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
+        #print(cluster_labels, self.ytest, assigned_clusers)
+        return classification_report(self.ytest,cluster_labels)
 
     # goes through each cluster and finds the majority value (0 or 1) then assigns that cluster that valeu
-    def assign_clusters_to_labels(self,kmeans, xtrain, ytrain):
+    def assign_clusters_to_labels(self):
 
-        clusters = kmeans.predict(xtrain)
+        clusters = self.kmeans.predict(self.xtrain)
         cluster_labels = {}
-        for cluster_id in range(kmeans.n_clusters):
+        for cluster_id in range(self.kmeans.n_clusters):
             cluster_indices = np.where(clusters == cluster_id)[0]
-            cluster_true_labels = ytrain[cluster_indices]
+            cluster_true_labels = self.ytrain[cluster_indices]
             # Find the most frequent label in this cluster
             if cluster_true_labels.size > 0:
                 most_common_label = np.bincount(cluster_true_labels).argmax()
@@ -73,35 +84,20 @@ class Unsupervised:
             cluster_labels[cluster_id] = most_common_label
         return cluster_labels
 
-    def predict_with_kmeans(self,kmeans, cluster_labels_map,  data):
-
-        # Convert the input data to a numpy array if it's a list (same as before)
-        if isinstance(data, list):
-            data = np.array(data).reshape(1, -1)  # Reshape to (1, num_features)
-        elif isinstance(data, np.ndarray):
-            if data.ndim == 1:
-                data = data.reshape(1, -1)
-        else:
-            raise TypeError("Input data must be a list or a numpy array.")
-
-        # Predict the cluster for the new data point
-        cluster = kmeans.predict(data)[0]
-        # Get the label for that cluster
-        predicted_label = cluster_labels_map[cluster]
-        return predicted_label
+    def predict(self,  data):
+        pred = self.kmeans.predict(data)
+        if self.assigned_clusters[0] == 1: # if the labels are flipped, flip the labels of each
+            for i in range(len(pred)):
+                if pred[i] == 1:
+                    pred[i] = 0
+                else :
+                    pred[i] = 1
+        return pred
 
 if __name__ == "__main__":
     unsupervised = Unsupervised()
-    # Load and prepare the data
-    xtrain, xtest, ytrain, ytest, scaler = unsupervised.load_data()
-
-    # Train the K-Means model
-    n_clusters = 2  # benign or malig
-    kmeans_model = unsupervised.train_kmeans_model(xtrain, n_clusters=n_clusters)
-
     # Evaluate the model
-    unsupervised.evaluate_kmeans_model(kmeans_model, xtest, ytest)
-
+    print(unsupervised.evaluate())
     # Assign labels to clusters
-    cluster_labels_map = unsupervised.assign_clusters_to_labels(kmeans_model, xtrain, ytrain)
-    print(f"Cluster to label mapping: {cluster_labels_map}")
+
+    #print(f"Cluster to label mapping: {unsupervised.assign_clusters_to_labels()}")

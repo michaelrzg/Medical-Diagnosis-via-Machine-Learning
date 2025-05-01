@@ -1,3 +1,9 @@
+
+# Michael Rizig
+# Bayes Classifier alg to predict breast cancer dataset
+# 4/10/25
+# Professor Alexiou
+#
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -12,6 +18,8 @@ import pandas as pd
 class BayesClassifier:
     def __init__(self):
         self.bayes = GaussianNB()
+        self.load_data()
+        self.train()
 
     def load_data(self):
         # Load the dataset
@@ -50,8 +58,8 @@ class BayesClassifier:
         self.load_data()
         self.bayes.fit(self.xtrain,self.ytrain)
 
-    def predict(self,test):
-        pred = self.bayes.predict(test)
+    def predict(self,data):
+        pred = self.bayes.predict(data)
         #print(pred)
         return pred
 
@@ -74,10 +82,12 @@ class BayesClassifier:
                     fn+=1
                 else:
                     tn+=1
-        print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
-        print(output)
+        #print("fn", fn ," fp ", fp , " tn " , tn , " tp ", tp)
+        return output
 
-bayes = BayesClassifier()
-bayes.train()
-bayes.predict(bayes.xtest)
-bayes.evaluate_model()
+if __name__ == "__main__":
+
+    bayes = BayesClassifier()
+    bayes.train()
+    bayes.predict(bayes.xtest)
+    print(bayes.evaluate_model())
