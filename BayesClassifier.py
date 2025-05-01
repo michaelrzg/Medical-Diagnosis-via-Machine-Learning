@@ -79,5 +79,5 @@ class BayesClassifier:
 
 bayes = BayesClassifier()
 bayes.train()
-bayes.predict(b.xtest)
+bayes.predict(bayes.xtest)
 bayes.evaluate_model()
