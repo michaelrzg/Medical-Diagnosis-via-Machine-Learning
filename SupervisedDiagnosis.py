@@ -6,14 +6,18 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import accuracy_score, classification_report
 import numpy as np
+from sklearn.linear_model import LogisticRegression
+import pandas as pd
 
 
 def load_and_prepare_data():
     # Load the dataset
     cancer = load_breast_cancer()
-    X = cancer.data
+    X = pd.DataFrame(cancer.data, columns=cancer.feature_names)
     y = cancer.target
+    # grab features
 
+    features = list(X.columns)
     # Split the data into train, test, adn validation sets
     # lines 19 and 20 borrowed from sklearn website
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
@@ -33,7 +37,7 @@ def load_and_prepare_data():
     y_val = torch.tensor(y_val, dtype=torch.long)
     y_test = torch.tensor(y_test, dtype=torch.long)
 
-    return X_train, X_val, X_test, y_train, y_val, y_test, scaler
+    return X_train, X_val, X_test, y_train, y_val, y_test, scaler, features
 
 
 # 2. Define the Model
@@ -58,6 +62,33 @@ class BinaryClassifier(nn.Module):
         out = self.fc3(out)
         out = self.sigmoid(out)
         return out
+
+# divde and conquer reduce:
+
+def divide_and_conquer_feature_selection(X_train, y_train, X_test, y_test, features, target_num_features):
+    if len(features) <= target_num_features:
+        return features
+
+    # Divide the features into two
+    mid = len(features) // 2
+    left = features[:mid]
+    right = features[mid:]
+
+    # Evaluate
+    aleft = helper(X_train, y_train, X_test, y_test, left)
+    aright = helper(X_train, y_train, X_test, y_test, right)
+
+    # Keep the better half
+    selected = left if aleft > aright else right
+
+    # Recurse
+    return divide_and_conquer_feature_selection(X_train, y_train, X_test, y_test, selected, target_num_features)
+
+def helper(X_train, y_train, X_test, y_test, feature_subset):
+    model = LogisticRegression(max_iter=10000, solver='liblinear')
+    model.fit(X_train[feature_subset], y_train)
+    y_pred = model.predict(X_test[feature_subset])
+    return accuracy_score(y_test, y_pred)
 
 
 
@@ -138,7 +169,7 @@ def evaluate_model(model, X_test, y_test):
 
 if __name__ == "__main__":
     # Load and prepare the data
-    X_train, X_val, X_test, y_train, y_val, y_test, scaler = load_and_prepare_data()
+    X_train, X_val, X_test, y_train, y_val, y_test, scaler, features = load_and_prepare_data()
 
     # Define the model
     input_size = X_train.shape[1]  # Number of features
